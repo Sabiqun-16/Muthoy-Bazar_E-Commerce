@@ -7,22 +7,23 @@ import { useCart } from '../context/CartContext.jsx';
 import { emoji, money } from '../lib/helpers.js';
 
 function Section({ title, to, products }) {
-  if (!products.length) return null;
+  const safeProducts = Array.isArray(products) ? products : [];
+  if (!safeProducts.length) return null;
   return (
     <section className="mt-10">
       <div className="mb-4 flex items-baseline justify-between">
         <h2 className="text-2xl font-bold">{title}</h2>
         {to && <Link to={to} className="font-semibold text-brand hover:underline">View all items</Link>}
       </div>
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">{products.map((p) => <ProductCard key={p._id} p={p} />)}</div>
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+        {safeProducts.map((p) => <ProductCard key={p._id} p={p} />)}
+      </div>
     </section>
   );
 }
 
 const get = (params) => api.get('/products', { params }).then((r) => r.data).catch(() => ({ products: [], pages: 1 }));
 
-// Optional photos: put slide-1.jpg, slide-2.jpg, slide-3.jpg and promo.jpg in client/public/banners/.
-// Without them the slides use their gradient background.
 const SLIDES = [
   { title: 'সাধ্যের মধ্যে স্বস্তির বাজার', text: 'Rice, oil, spices and daily needs from trusted brands. Cash on delivery across Bangladesh.', cta: 'Shop the offer zone', to: '/shop?flag=offer', bg: 'from-brand-dark to-emerald-700', img: '/banners/slide-1.jpg' },
   { title: 'New arrivals every week', text: 'See what just landed on our shelves.', cta: 'Shop new arrivals', to: '/shop?flag=new', bg: 'from-teal-900 to-teal-600', img: '/banners/slide-2.jpg' },
@@ -81,20 +82,36 @@ export default function Home() {
   useEffect(() => {
     Promise.all([
       get({ flag: 'best', limit: 10 }), get({ flag: 'offer', limit: 10 }), get({ flag: 'new', limit: 10 }), get({ limit: 10 }),
-      api.get('/categories').then((r) => r.data).catch(() => []), api.get('/products/brands').then((r) => r.data).catch(() => []),
+      api.get('/categories').then((r) => r.data).catch(() => []), 
+      api.get('/products/brands').then((r) => r.data).catch(() => []),
     ]).then(([best, offer, fresh, all, cats, brands]) => {
-      setD({ best: best.products, offer: offer.products, fresh: fresh.products, cats, brands });
-      setMore({ list: all.products, page: 1, pages: all.pages, loading: false });
+      setD({ 
+        best: Array.isArray(best?.products) ? best.products : [], 
+        offer: Array.isArray(offer?.products) ? offer.products : [], 
+        fresh: Array.isArray(fresh?.products) ? fresh.products : [], 
+        cats: Array.isArray(cats) ? cats : [], 
+        brands: Array.isArray(brands) ? brands : [] 
+      });
+      setMore({ 
+        list: Array.isArray(all?.products) ? all.products : [], 
+        page: 1, 
+        pages: all?.pages || 1, 
+        loading: false 
+      });
     });
   }, []);
 
   const loadMore = async () => {
     setMore((m) => ({ ...m, loading: true }));
     const r = await get({ limit: 10, page: more.page + 1 });
-    setMore((m) => ({ list: [...m.list, ...r.products], page: m.page + 1, pages: r.pages, loading: false }));
+    const newProducts = Array.isArray(r?.products) ? r.products : [];
+    setMore((m) => ({ list: [...m.list, ...newProducts], page: m.page + 1, pages: r?.pages || m.pages, loading: false }));
   };
 
   const scrollRail = (dir) => rail.current?.scrollBy({ left: dir * 320, behavior: 'smooth' });
+
+  // Safe brand array fallback
+  const safeBrands = Array.isArray(d?.brands) ? d.brands : [];
 
   return (
     <main className="mx-auto max-w-7xl px-4 pb-6">
@@ -147,11 +164,15 @@ export default function Home() {
 
       <Section title="Top selling products" to="/shop?flag=best" products={d.best} />
 
-      {d.brands.length > 0 && (
+      {safeBrands.length > 0 && (
         <section className="mt-10">
           <h2 className="mb-4 text-2xl font-bold">Our brands</h2>
           <div className="flex flex-wrap gap-2">
-            {d.brands.slice(0, 12).map((b) => <Link key={b} to={`/shop?brand=${encodeURIComponent(b)}`} className="rounded-lg border bg-white px-4 py-2 font-semibold hover:border-brand hover:text-brand">{b}</Link>)}
+            {safeBrands.slice(0, 12).map((b) => (
+              <Link key={b} to={`/shop?brand=${encodeURIComponent(b)}`} className="rounded-lg border bg-white px-4 py-2 font-semibold hover:border-brand hover:text-brand">
+                {b}
+              </Link>
+            ))}
           </div>
         </section>
       )}
@@ -161,7 +182,9 @@ export default function Home() {
       <Section title="Just for you" to="/shop" products={more.list} />
       {more.page < more.pages && (
         <div className="mt-6 text-center">
-          <button onClick={loadMore} disabled={more.loading} className="rounded-lg border-2 border-brand px-8 py-2 font-semibold text-brand hover:bg-brand-light disabled:opacity-60">{more.loading ? 'Loading…' : 'Load more'}</button>
+          <button onClick={loadMore} disabled={more.loading} className="rounded-lg border-2 border-brand px-8 py-2 font-semibold text-brand hover:bg-brand-light disabled:opacity-60">
+            {more.loading ? 'Loading…' : 'Load more'}
+          </button>
         </div>
       )}
 
