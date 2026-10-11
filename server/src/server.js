@@ -28,12 +28,28 @@ if (!process.env.JWT_SECRET || !process.env.MONGO_URI) {
 }
 
 const app = express();
+
 // Behind a reverse proxy (Nginx, Render, etc.) set TRUST_PROXY=1 so IP blocking sees the visitor's real IP.
 if (process.env.TRUST_PROXY) app.set('trust proxy', Number(process.env.TRUST_PROXY) || process.env.TRUST_PROXY);
+
 app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
-// CLIENT_URL can hold one address or several separated by commas, e.g. the Vercel address and your own domain.
-const origins = (process.env.CLIENT_URL || 'http://localhost:5173').split(',').map((s) => s.trim().replace(/\/$/, '')).filter(Boolean);
-app.use(cors({ origin: origins }));
+
+// Allowed origins configured for local development and Vercel production
+const allowedOrigins = [
+  'https://muthoy-bazar-e-commerce.vercel.app',
+  'http://localhost:5173',
+  'http://localhost:3000'
+];
+
+// Combine origins from environment variable if provided
+if (process.env.CLIENT_URL) {
+  const envOrigins = process.env.CLIENT_URL.split(',').map((s) => s.trim().replace(/\/$/, '')).filter(Boolean);
+  envOrigins.forEach((url) => {
+    if (!allowedOrigins.includes(url)) allowedOrigins.push(url);
+  });
+}
+
+app.use(cors({ origin: allowedOrigins, credentials: true }));
 app.use(express.json({ limit: '1mb' }));
 app.use(morgan('dev'));
 app.use('/uploads', express.static(uploadDir));
