@@ -1,6 +1,1 @@
-{
-  "rewrites": [
-    { "source": "/uploads/:path*", "destination": "https://YOUR-API-NAME.onrender.com/uploads/:path*" },
-    { "source": "/(.*)", "destination": "/index.html" }
-  ]
-}
+{"rewrites": [{"source": "/(.*)", "destination": "/index.html"}]}
