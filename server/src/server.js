@@ -29,13 +29,14 @@ if (!process.env.JWT_SECRET || !process.env.MONGO_URI) {
 
 const app = express();
 
-// Behind a reverse proxy (Nginx, Render, etc.) set TRUST_PROXY=1 so IP blocking sees the visitor's real IP.
+// Behind a reverse proxy (Nginx, Render, etc.)
 if (process.env.TRUST_PROXY) app.set('trust proxy', Number(process.env.TRUST_PROXY) || process.env.TRUST_PROXY);
 
 app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
 
 // Allowed origins configured for local development and Vercel production
 const allowedOrigins = [
+  'https://muthoy-bazar-e-commerce-ojqg.vercel.app',
   'https://muthoy-bazar-e-commerce.vercel.app',
   'http://localhost:5173',
   'http://localhost:3000'
@@ -73,7 +74,14 @@ app.use(notFound);
 app.use(errorHandler);
 
 const port = process.env.PORT || 5000;
-connectDB()
-  .then(() => loadBlocklist())
-  .then(() => app.listen(port, () => console.log(`API running on http://localhost:${port}`)))
-  .catch((e) => { console.error('Database connection failed:', e.message); process.exit(1); });
+
+// Start listening immediately so Render doesn't throw 502 Bad Gateway
+app.listen(port, () => {
+  console.log(`API running on port ${port}`);
+  
+  // Connect DB after server starts
+  connectDB()
+    .then(() => loadBlocklist())
+    .then(() => console.log('MongoDB and Blocklist loaded successfully.'))
+    .catch((e) => console.error('Database connection failed:', e.message));
+});
