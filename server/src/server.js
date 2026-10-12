@@ -32,36 +32,21 @@ const app = express();
 // Behind a reverse proxy (Nginx, Render, etc.)
 if (process.env.TRUST_PROXY) app.set('trust proxy', Number(process.env.TRUST_PROXY) || process.env.TRUST_PROXY);
 
-app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
+// Disable helmet headers that conflict with CORS
+app.use(
+  helmet({
+    crossOriginResourcePolicy: false,
+    crossOriginEmbedderPolicy: false
+  })
+);
 
-// Allowed origins configured for local development and Vercel production
-const allowedOrigins = [
-  'https://muthoy-bazar-e-commerce-ojqg.vercel.app',
-  'https://muthoy-bazar-e-commerce.vercel.app',
-  'http://localhost:5173',
-  'http://localhost:3000'
-];
-
-// Combine origins from environment variable if provided
-if (process.env.CLIENT_URL) {
-  const envOrigins = process.env.CLIENT_URL.split(',').map((s) => s.trim().replace(/\/$/, '')).filter(Boolean);
-  envOrigins.forEach((url) => {
-    if (!allowedOrigins.includes(url)) allowedOrigins.push(url);
-  });
-}
-
-// Dynamic CORS origin handler
+// Allow All Origins for smooth cross-domain requests
 app.use(
   cors({
-    origin: function (origin, callback) {
-      // allow requests with no origin (like mobile apps or curl requests)
-      if (!origin) return callback(null, true);
-      if (allowedOrigins.includes(origin) || origin.includes('vercel.app') || origin.includes('localhost')) {
-        return callback(null, true);
-      }
-      return callback(null, true); // Fallback: allow all during testing
-    },
-    credentials: true
+    origin: '*',
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+    credentials: false
   })
 );
 
