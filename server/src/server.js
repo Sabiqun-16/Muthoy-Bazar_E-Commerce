@@ -50,7 +50,21 @@ if (process.env.CLIENT_URL) {
   });
 }
 
-app.use(cors({ origin: allowedOrigins, credentials: true }));
+// Dynamic CORS origin handler
+app.use(
+  cors({
+    origin: function (origin, callback) {
+      // allow requests with no origin (like mobile apps or curl requests)
+      if (!origin) return callback(null, true);
+      if (allowedOrigins.includes(origin) || origin.includes('vercel.app') || origin.includes('localhost')) {
+        return callback(null, true);
+      }
+      return callback(null, true); // Fallback: allow all during testing
+    },
+    credentials: true
+  })
+);
+
 app.use(express.json({ limit: '1mb' }));
 app.use(morgan('dev'));
 app.use('/uploads', express.static(uploadDir));
@@ -78,7 +92,7 @@ const port = process.env.PORT || 5000;
 // Start listening immediately so Render doesn't throw 502 Bad Gateway
 app.listen(port, () => {
   console.log(`API running on port ${port}`);
-  
+
   // Connect DB after server starts
   connectDB()
     .then(() => loadBlocklist())
